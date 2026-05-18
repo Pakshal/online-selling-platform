@@ -4,11 +4,11 @@ const BACKEND = process.env.BACKEND_URL ?? "http://backend:8000";
 
 async function proxy(
   req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: Promise<{ slug: string[] }> }
 ) {
-  const { path } = await params;
+  const { slug } = await params;
   const search = req.nextUrl.search ?? "";
-  const target = `${BACKEND}/api/v1/${path.join("/")}${search}`;
+  const target = `${BACKEND}/api/v1/${slug.join("/")}${search}`;
 
   const headers = new Headers(req.headers);
   headers.delete("host");
@@ -46,4 +46,3 @@ export const POST = proxy;
 export const PUT = proxy;
 export const DELETE = proxy;
 export const PATCH = proxy;
-
