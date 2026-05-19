@@ -75,10 +75,14 @@ def send_order_notification(order_id, admin_email: str) -> None:
         msg["To"] = admin_email
         msg.attach(MIMEText(html_content, "html"))
 
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-            server.starttls()
+        if not settings.SMTP_HOST or not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
+            logger.warning("SMTP not configured — skipping order email notification")
+            return
+
+        # Use SMTP_SSL (port 465) to avoid Railway blocking port 587 STARTTLS
+        with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT) as server:
             server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-            server.sendmail(settings.FROM_EMAIL, admin_email, msg.as_string())
+            server.sendmail(settings.FROM_EMAIL or settings.SMTP_USERNAME, admin_email, msg.as_string())
 
         logger.info("Order notification sent to %s", admin_email)
     except Exception as e:
