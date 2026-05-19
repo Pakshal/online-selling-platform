@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND = process.env.BACKEND_URL ?? "http://backend:8000";
-
 async function proxy(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string[] }> }
 ) {
   const { slug } = await params;
   const search = req.nextUrl.search ?? "";
+  // Read at request time so Railway's runtime env var is always used
+  const BACKEND = process.env.BACKEND_URL || "http://backend:8000";
   const target = `${BACKEND}/api/v1/${slug.join("/")}${search}`;
 
   const headers = new Headers(req.headers);
