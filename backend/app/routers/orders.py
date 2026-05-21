@@ -38,6 +38,7 @@ def create_order(
     payload: schemas.OrderCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    current_user: Optional[models.User] = Depends(_get_optional_user),
 ):
     store = db.query(models.Store).filter(
         models.Store.id == payload.store_id,
@@ -49,6 +50,7 @@ def create_order(
     order = models.Order(
         order_number=_generate_order_number(),
         store_id=payload.store_id,
+        customer_id=current_user.id if current_user and current_user.role == "customer" else None,
         customer_name=payload.customer.name,
         customer_phone=payload.customer.phone,
         customer_email=payload.customer.email,
