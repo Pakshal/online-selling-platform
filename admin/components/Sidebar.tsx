@@ -25,6 +25,7 @@ const storeOwnerNav = [
 
 const customerNav = [
   { href: "/customer/stores", label: "Browse Stores", icon: Store },
+  { href: "/customer/my-orders", label: "My Orders", icon: Package },
 ];
 
 export default function Sidebar() {
