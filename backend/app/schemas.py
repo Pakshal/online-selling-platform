@@ -201,6 +201,7 @@ class Token(BaseModel):
     role: Optional[str] = None
     full_name: Optional[str] = None
     email: Optional[str] = None
+    must_change_password: Optional[bool] = False
 
 
 # ─── User ─────────────────────────────────────────────────────────────────────
@@ -217,12 +218,13 @@ class UserOut(OrmBase):
     full_name: Optional[str]
     email: str
     role: str
+    phone_number: Optional[str] = None
     is_active: bool
     created_at: datetime
 
 
 class StoreWithOwnerCreate(BaseModel):
-    """Super Admin creates store + owner in one call."""
+    """Super Admin creates store + owner in one call. Password auto-generated if omitted."""
     store_name: str
     store_description: Optional[str] = None
     store_logo_url: Optional[str] = None
@@ -231,7 +233,22 @@ class StoreWithOwnerCreate(BaseModel):
     address: Optional[str] = None
     owner_full_name: str
     owner_email: EmailStr
-    owner_password: str
+    owner_password: Optional[str] = None  # auto-generated if not provided
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class ProvisionStoreOut(OrmBase):
+    """Returned by provision-store — includes generated credentials."""
+    id: UUID
+    name: str
+    admin_email: str
+    owner_email: str
+    generated_password: Optional[str] = None  # only set when auto-generated
+    product_count: Optional[int] = 0
 
 
 # ─── Settings ─────────────────────────────────────────────────────────────────
