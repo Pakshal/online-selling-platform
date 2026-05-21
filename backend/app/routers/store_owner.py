@@ -21,7 +21,14 @@ def store_owner_login(payload: schemas.AdminLogin, db: Session = Depends(get_db)
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account is disabled")
     token = create_access_token({"sub": user.email, "role": user.role})
-    return {"access_token": token, "token_type": "bearer", "role": user.role, "full_name": user.full_name, "email": user.email}
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "role": user.role,
+        "full_name": user.full_name,
+        "email": user.email,
+        "must_change_password": user.must_change_password,
+    }
 
 
 # ─── My Store ─────────────────────────────────────────────────────────────────
