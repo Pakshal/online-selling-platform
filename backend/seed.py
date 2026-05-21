@@ -7,9 +7,21 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-from app.database import SessionLocal
+from sqlalchemy import text
+from app.database import SessionLocal, engine
 from app import models
 from app.auth import hash_password
+
+# Run column migrations before any queries
+_MIGRATIONS = [
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES users(id) ON DELETE SET NULL",
+]
+with engine.begin() as _conn:
+    for _sql in _MIGRATIONS:
+        _conn.execute(text(_sql))
+print("✓ Migrations applied")
 
 db = SessionLocal()
 
