@@ -17,11 +17,14 @@ class User(Base):
     full_name = Column(String(255))
     email = Column(String(255), unique=True, nullable=False)
     hashed_password = Column(Text, nullable=False)
-    role = Column(String(50), nullable=False)  # super_admin | store_owner
+    role = Column(String(50), nullable=False)  # super_admin | store_owner | customer
+    phone_number = Column(String(20))
     is_active = Column(Boolean, default=True)
+    must_change_password = Column(Boolean, default=False)  # force password reset on first login
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     stores = relationship("Store", back_populates="owner")
+    orders = relationship("Order", back_populates="customer_user", foreign_keys="Order.customer_id")
 
 
 class Store(Base):
@@ -72,6 +75,7 @@ class Order(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     order_number = Column(String(50), unique=True, nullable=False)
     store_id = Column(UUID(as_uuid=True), ForeignKey("stores.id"), nullable=False)
+    customer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)  # linked user if registered
     customer_name = Column(String(255), nullable=False)
     customer_phone = Column(String(20), nullable=False)
     customer_email = Column(String(255), nullable=False)
@@ -87,6 +91,7 @@ class Order(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     store = relationship("Store", back_populates="orders")
+    customer_user = relationship("User", back_populates="orders", foreign_keys=[customer_id])
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
 
 
