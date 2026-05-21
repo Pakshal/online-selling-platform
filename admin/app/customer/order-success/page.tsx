@@ -34,6 +34,12 @@ function OrderSuccessContent() {
           >
             <ShoppingBag size={16} /> Browse More Stores
           </button>
+          <button
+            onClick={() => router.push("/customer/my-orders")}
+            className="flex-1 bg-blue-600 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-blue-700 transition flex items-center justify-center gap-2"
+          >
+            📦 My Orders
+          </button>
         </div>
       </div>
     </div>
