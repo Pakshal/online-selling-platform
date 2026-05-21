@@ -34,6 +34,12 @@ export default function LoginPage() {
       if (data.full_name) localStorage.setItem("user_name", data.full_name);
       if (data.email) localStorage.setItem("user_email", data.email);
 
+      // Force password change on first login
+      if (data.must_change_password) {
+        router.push("/change-password");
+        return;
+      }
+
       if (data.role === "super_admin") {
         router.push("/dashboard");
       } else if (data.role === "store_owner") {
@@ -82,6 +88,12 @@ export default function LoginPage() {
             {loading ? "Signing in…" : "Sign In"}
           </button>
         </form>
+        <p className="text-sm text-center text-gray-500 mt-4">
+          New customer?{" "}
+          <a href="/register" className="text-blue-600 hover:underline font-medium">
+            Create an account
+          </a>
+        </p>
       </div>
     </div>
   );
