@@ -1,13 +1,31 @@
 import random
 import string
+from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
 from app.email_service import send_order_notification
+from app.auth import _get_user_from_token
 
 router = APIRouter(prefix="/orders", tags=["orders"])
+
+_optional_bearer = OAuth2PasswordBearer(tokenUrl="/api/v1/admin/login", auto_error=False)
+
+
+def _get_optional_user(
+    token: Optional[str] = Depends(_optional_bearer),
+    db: Session = Depends(get_db),
+) -> Optional[models.User]:
+    """Returns the logged-in user if a valid token is present, otherwise None."""
+    if not token:
+        return None
+    try:
+        return _get_user_from_token(token, db)
+    except Exception:
+        return None
 
 
 def _generate_order_number() -> str:
