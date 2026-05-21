@@ -25,6 +25,10 @@ async function proxy(
 
   try {
     const upstream = await fetch(target, init);
+    // 204 No Content — Response constructor rejects status 204 with a body
+    if (upstream.status === 204) {
+      return new NextResponse(null, { status: 204, headers: new Headers(upstream.headers) });
+    }
     const body = await upstream.arrayBuffer();
     const resHeaders = new Headers(upstream.headers);
     resHeaders.delete("transfer-encoding"); // avoid chunked encoding issues
