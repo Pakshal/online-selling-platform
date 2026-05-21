@@ -1,164 +1,122 @@
 "use client";
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import api from "@/lib/api";
-import { Store } from "@/lib/types";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
-import { toast } from "sonner";
+import { Store, Package, Search } from "lucide-react";
 
-export default function StoresPage() {
-  const qc = useQueryClient();
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<Store | null>(null);
+interface StoreItem {
+  id: string;
+  name: string;
+  description: string | null;
+  logo_url: string | null;
+  contact_phone: string | null;
+  address: string | null;
+  product_count: number;
+  is_active: boolean;
+}
 
-  const { data: stores = [], isLoading } = useQuery<Store[]>({
-    queryKey: ["stores"],
-    queryFn: () => api.get("/admin/stores").then((r) => r.data),
-  });
+export default function CustomerStoresPage() {
+  const [stores, setStores] = useState<StoreItem[]>([]);
+  const [filtered, setFiltered] = useState<StoreItem[]>([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const deleteMut = useMutation({
-    mutationFn: (id: string) => api.delete(`/admin/stores/${id}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["stores"] }); toast.success("Store deleted"); },
-    onError: () => toast.error("Failed to delete store"),
-  });
+  useEffect(() => {
+    api.get("/stores").then((r) => {
+      setStores(r.data);
+      setFiltered(r.data);
+    }).finally(() => setLoading(false));
+  }, []);
 
-  const toggleMut = useMutation({
-    mutationFn: (store: Store) =>
-      api.put(`/admin/stores/${store.id}`, { is_active: !store.is_active }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["stores"] }),
-  });
+  useEffect(() => {
+    const q = search.toLowerCase();
+    setFiltered(stores.filter((s) =>
+      s.name.toLowerCase().includes(q) ||
+      (s.description ?? "").toLowerCase().includes(q)
+    ));
+  }, [search, stores]);
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Stores</h1>
-        <button
-          onClick={() => { setEditing(null); setShowForm(true); }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
-        >
-          <Plus size={16} /> New Store
-        </button>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Browse Stores</h1>
+        <p className="text-sm text-gray-500 mt-1">Explore all active stores on the platform</p>
       </div>
 
-      {isLoading ? (
-        <p className="text-gray-400">Loading…</p>
+      {/* Search */}
+      <div className="relative mb-6 max-w-md">
+        <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+        <input
+          type="text"
+          placeholder="Search stores..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-white rounded-xl shadow-sm p-5 animate-pulse">
+              <div className="h-16 w-16 bg-gray-200 rounded-lg mb-3" />
+              <div className="h-4 bg-gray-200 rounded w-2/3 mb-2" />
+              <div className="h-3 bg-gray-100 rounded w-full" />
+            </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-20 text-gray-400">
+          <Store size={48} className="mx-auto mb-3 opacity-30" />
+          <p>No stores found</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {stores.map((store) => (
-            <div key={store.id} className="bg-white rounded-2xl shadow-sm p-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="font-semibold text-gray-800">{store.name}</h2>
-                  <p className="text-sm text-gray-500 mt-1 line-clamp-2">{store.description}</p>
-                  <p className="text-xs text-gray-400 mt-1">{store.admin_email}</p>
-                  <p className="text-xs text-gray-400">{store.product_count} products</p>
+          {filtered.map((store) => (
+            <div key={store.id} className="bg-white rounded-xl shadow-sm border hover:shadow-md transition p-5">
+              <div className="flex items-start gap-4 mb-4">
+                {store.logo_url ? (
+                  <img
+                    src={store.logo_url}
+                    alt={store.name}
+                    className="w-16 h-16 rounded-lg object-cover border"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Store className="text-blue-400" size={28} />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-semibold text-gray-800 truncate">{store.name}</h2>
+                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                    {store.description ?? "No description"}
+                  </p>
                 </div>
-                {store.logo_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={store.logo_url} alt={store.name} className="w-12 h-12 rounded-xl object-cover" />
+              </div>
+
+              <div className="flex items-center justify-between text-sm text-gray-500 border-t pt-3">
+                <span className="flex items-center gap-1">
+                  <Package size={14} />
+                  {store.product_count} products
+                </span>
+                {store.contact_phone && (
+                  <span className="text-xs">{store.contact_phone}</span>
                 )}
               </div>
-              <div className="flex items-center gap-2 mt-4">
-                <button
-                  onClick={() => { setEditing(store); setShowForm(true); }}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
-                >
-                  <Pencil size={14} />
-                </button>
-                <button
-                  onClick={() => toggleMut.mutate(store)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
-                >
-                  {store.is_active ? <ToggleRight size={14} className="text-green-500" /> : <ToggleLeft size={14} />}
-                </button>
-                <button
-                  onClick={() => { if (confirm("Delete this store?")) deleteMut.mutate(store.id); }}
-                  className="p-1.5 rounded-lg hover:bg-red-50 text-red-400"
-                >
-                  <Trash2 size={14} />
-                </button>
-                <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${store.is_active ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"}`}>
-                  {store.is_active ? "Active" : "Inactive"}
-                </span>
-              </div>
+
+              {store.address && (
+                <p className="text-xs text-gray-400 mt-2 truncate">📍 {store.address}</p>
+              )}
+
+              <a
+                href={`/customer/stores/${store.id}`}
+                className="mt-4 block text-center text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-200 rounded-lg py-1.5 hover:bg-blue-50 transition"
+              >
+                Browse Store →
+              </a>
             </div>
           ))}
         </div>
       )}
-
-      {showForm && (
-        <StoreFormModal
-          store={editing}
-          onClose={() => setShowForm(false)}
-          onSaved={() => { qc.invalidateQueries({ queryKey: ["stores"] }); setShowForm(false); }}
-        />
-      )}
-    </div>
-  );
-}
-
-function StoreFormModal({
-  store, onClose, onSaved,
-}: { store: Store | null; onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({
-    name: store?.name ?? "",
-    description: store?.description ?? "",
-    logo_url: store?.logo_url ?? "",
-    admin_email: store?.admin_email ?? "",
-  });
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      if (store) {
-        await api.put(`/admin/stores/${store.id}`, form);
-        toast.success("Store updated");
-      } else {
-        await api.post("/admin/stores", form);
-        toast.success("Store created");
-      }
-      onSaved();
-    } catch {
-      toast.error("Failed to save store");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
-        <h2 className="text-lg font-semibold mb-4">{store ? "Edit Store" : "New Store"}</h2>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          {(["name", "description", "logo_url", "admin_email"] as const).map((field) => (
-            <div key={field}>
-              <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
-                {field.replace("_", " ")}
-              </label>
-              <input
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={form[field]}
-                onChange={(e) => setForm({ ...form, [field]: e.target.value })}
-                required={field === "name" || field === "admin_email"}
-              />
-            </div>
-          ))}
-          <div className="flex gap-2 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 border rounded-lg py-2 text-sm hover:bg-gray-50">
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-            >
-              {loading ? "Saving…" : "Save"}
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
   );
 }
