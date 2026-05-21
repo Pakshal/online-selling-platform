@@ -1,4 +1,6 @@
 from typing import List
+import secrets
+import string
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -10,6 +12,11 @@ from app.auth import (
 )
 
 router = APIRouter(prefix="/admin", tags=["super-admin"])
+
+
+def _generate_password(length: int = 12) -> str:
+    alphabet = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -56,20 +63,25 @@ def list_store_owners(
     return db.query(models.User).filter(models.User.role == "store_owner").all()
 
 
-@router.post("/provision-store", response_model=schemas.StoreOut, status_code=201)
+@router.post("/provision-store", response_model=schemas.ProvisionStoreOut, status_code=201)
 def provision_store_with_owner(
     payload: schemas.StoreWithOwnerCreate,
     db: Session = Depends(get_db),
     _: models.User = Depends(get_current_super_admin),
 ):
-    """Create a store owner account + store in one operation."""
+    """Create a store owner account + store. Auto-generates password if not provided."""
     if db.query(models.User).filter(models.User.email == payload.owner_email).first():
         raise HTTPException(status_code=409, detail="Owner email already registered")
+
+    auto_generated = payload.owner_password is None
+    raw_password = payload.owner_password or _generate_password()
+
     owner = models.User(
         full_name=payload.owner_full_name,
         email=payload.owner_email,
-        hashed_password=hash_password(payload.owner_password),
+        hashed_password=hash_password(raw_password),
         role="store_owner",
+        must_change_password=True,  # always force change on first login
     )
     db.add(owner)
     db.flush()
@@ -86,9 +98,15 @@ def provision_store_with_owner(
     db.add(store)
     db.commit()
     db.refresh(store)
-    out = schemas.StoreOut.model_validate(store)
-    out.product_count = 0
-    return out
+
+    return schemas.ProvisionStoreOut(
+        id=store.id,
+        name=store.name,
+        admin_email=store.admin_email,
+        owner_email=owner.email,
+        generated_password=raw_password if auto_generated else None,
+        product_count=0,
+    )
 
 
 # ─── Stores ───────────────────────────────────────────────────────────────────
