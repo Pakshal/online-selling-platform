@@ -14,6 +14,7 @@ export default function StoreOwnersPage() {
     owner_full_name: "", owner_email: "", owner_password: "",
     store_name: "", admin_email: "", contact_phone: "", address: "", store_description: "",
   });
+  const [generatedCreds, setGeneratedCreds] = useState<{ email: string; password: string; store: string } | null>(null);
 
   const load = () =>
     api.get("/admin/store-owners").then((r) => setOwners(r.data)).finally(() => setLoading(false));
