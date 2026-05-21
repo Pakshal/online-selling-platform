@@ -36,8 +36,23 @@ export default function StoreOwnersPage() {
   const provisionStore = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post("/admin/provision-store", provisionForm);
-      toast.success("Store + owner provisioned");
+      // Send without owner_password if blank — backend auto-generates
+      const payload = {
+        ...provisionForm,
+        owner_password: provisionForm.owner_password || undefined,
+      };
+      const res = await api.post("/admin/provision-store", payload);
+      const data = res.data;
+      if (data.generated_password) {
+        // Show generated credentials to admin
+        setGeneratedCreds({
+          email: data.owner_email,
+          password: data.generated_password,
+          store: data.name,
+        });
+      } else {
+        toast.success("Store + owner provisioned");
+      }
       setShowForm(false);
       load();
     } catch (err: any) {
@@ -83,10 +98,10 @@ export default function StoreOwnersPage() {
                 <h2 className="font-semibold text-gray-800">Provision Store + Owner</h2>
                 <p className="text-xs text-gray-500">Creates the owner account and store in one step.</p>
                 <div className="grid grid-cols-2 gap-3">
-                  {[["owner_full_name","Owner Name"],["owner_email","Owner Email"],["owner_password","Owner Password"],["store_name","Store Name"],["admin_email","Notification Email"],["contact_phone","Contact Phone"],["address","Address"],["store_description","Description"]].map(([k,l]) => (
+                  {[["owner_full_name","Owner Name"],["owner_email","Owner Email"],["owner_password","Temp Password (blank = auto-generate)"],["store_name","Store Name"],["admin_email","Notification Email"],["contact_phone","Contact Phone"],["address","Address"],["store_description","Description"]].map(([k,l]) => (
                     <div key={k} className={k === "address" || k === "store_description" ? "col-span-2" : ""}>
                       <label className="block text-xs text-gray-500 mb-1">{l}</label>
-                      <input required={["owner_full_name","owner_email","owner_password","store_name","admin_email"].includes(k)} type={k === "owner_password" ? "password" : k.includes("email") ? "email" : "text"} value={(provisionForm as any)[k]} onChange={(e) => setProvisionForm({ ...provisionForm, [k]: e.target.value })} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                      <input required={["owner_full_name","owner_email","store_name","admin_email"].includes(k)} type={k === "owner_password" ? "password" : k.includes("email") ? "email" : "text"} value={(provisionForm as any)[k]} onChange={(e) => setProvisionForm({ ...provisionForm, [k]: e.target.value })} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder={k === "owner_password" ? "Leave blank to auto-generate" : undefined} />
                     </div>
                   ))}
                 </div>
@@ -118,6 +133,44 @@ export default function StoreOwnersPage() {
         </table>
         {owners.length === 0 && <p className="text-center text-gray-400 py-8">No store owners yet.</p>}
       </div>
+
+      {/* Generated credentials modal */}
+      {generatedCreds && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <div className="text-center mb-4">
+              <div className="text-3xl mb-2">🎉</div>
+              <h2 className="text-xl font-bold text-gray-800">Store Provisioned!</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Share these credentials with the store owner. They will be asked to change their password on first login.
+              </p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4 space-y-3 text-sm mb-4">
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">Store</p>
+                <p className="font-semibold text-gray-800">{generatedCreds.store}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">Login Email</p>
+                <p className="font-mono text-gray-800 select-all">{generatedCreds.email}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">Temporary Password</p>
+                <p className="font-mono text-lg font-bold text-blue-700 select-all tracking-widest">{generatedCreds.password}</p>
+              </div>
+            </div>
+            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+              ⚠️ Copy this password now — it will not be shown again.
+            </p>
+            <button
+              onClick={() => setGeneratedCreds(null)}
+              className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition"
+            >
+              I've saved the credentials
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
