@@ -29,7 +29,7 @@ def login(payload: schemas.AdminLogin, db: Session = Depends(get_db)):
     if user.role not in ("super_admin", "store_owner"):
         raise HTTPException(status_code=403, detail="Not an admin user")
     token = create_access_token({"sub": user.email, "role": user.role})
-    return {"access_token": token, "token_type": "bearer", "role": user.role, "full_name": user.full_name, "email": user.email}
+    return {"access_token": token, "token_type": "bearer", "role": user.role, "full_name": user.full_name, "email": user.email, "must_change_password": user.must_change_password}
 
 
 # ─── Store Owners ─────────────────────────────────────────────────────────────
@@ -168,7 +168,16 @@ def delete_store(
     store = db.query(models.Store).filter(models.Store.id == store_id).first()
     if not store:
         raise HTTPException(status_code=404, detail="Store not found")
+    owner_id = store.owner_id
     db.delete(store)
+    db.flush()
+    # Delete the owner user if they have no remaining stores
+    if owner_id:
+        remaining = db.query(models.Store).filter(models.Store.owner_id == owner_id).count()
+        if remaining == 0:
+            owner = db.query(models.User).filter(models.User.id == owner_id).first()
+            if owner and owner.role == "store_owner":
+                db.delete(owner)
     db.commit()
 
 
